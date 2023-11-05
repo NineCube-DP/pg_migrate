@@ -6,7 +6,7 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 
-VERSION = '0.1.0'
+from version import pg_migrate_version
 
 
 def get_tag_version():
@@ -28,13 +28,13 @@ class VerifyVersionCommand(install):
 
     def run(self):
         tag_version = get_tag_version()
-        if tag_version and tag_version != VERSION:
-            sys.exit(f"Git tag: {tag_version} does not match the version of this app: {VERSION}")
+        if tag_version and tag_version != pg_migrate_version():
+            sys.exit(f"Git tag: {tag_version} does not match the version of this app: {pg_migrate_version()}")
 
 
 setup(
     name='pg_migrate',
-    version=VERSION,
+    version=pg_migrate_version(),
     packages=find_packages("."),
     license='MIT',
     author='Daniel Pustuła',
