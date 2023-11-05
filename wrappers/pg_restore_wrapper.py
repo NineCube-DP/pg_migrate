@@ -1,0 +1,2 @@
+class PgRestoreWrapper:
+    pass

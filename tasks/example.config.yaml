@@ -1,0 +1,27 @@
+
+mode: # all available modes MIGRATE | BACKUP | RESTORE
+path: # path to save all output files - default path
+
+source:
+  remote: # True if connection to database is through IP connection or False if else
+  host: # address IP of remote database
+  port: # port of remote database
+  credential:
+    login: # username of admin account of remote database
+    password: # password of admin account of remote database
+  database: # list of database to use - default pg_migrate copy all schemas of the database. If you want to specify use
+   # - db_name@schema,schema2,...
+  params: # list of optional params
+   # - generate_checksum - generate file with information about source database structure and data
+
+destination:
+  remote: # True if connection to database is through IP connection or False if else
+  host: # address IP of remote database
+  port: # port of remote database
+  credential:
+    login: # username of admin account of remote database
+    password: # password of admin account of remote database
+  database: # list of database to use - default pg_migrate copy all schemas of the database. If you want to specify use
+   # - db_name@schema,schema2,...
+  params: # list of optional params
+   # - verify_checksum - verify restored database with information about source database structure and data from checksum file

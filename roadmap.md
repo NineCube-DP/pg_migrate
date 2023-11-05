@@ -1,0 +1,5 @@
+- [ ] Add S3 as storage
+- [ ] Build cli with curses
+- [ ] read yaml configs
+- [ ] run cyclic jobs
+- [ ] export/import databases with checksum
