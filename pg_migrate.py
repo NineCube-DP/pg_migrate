@@ -1,15 +1,18 @@
 import argparse
 import os
 from datetime import datetime
+
 import yaml
 
 from version import pg_migrate_version
+from wrappers import pg_restore_version
 from wrappers.pg_dump import dump_remote, pg_dump_version
 
 
 def print_version():
     print('pg_migrate version: ' + pg_migrate_version())
     print('pg_dump version: ' + pg_dump_version())
+    print('pg_restore version: ' + pg_restore_version())
 
 
 def read_configuration(config_path):
@@ -57,6 +60,26 @@ def initialize(args):
                 schema=schema,
                 path=db_dir,
                 checksum='generate_checksum' in backup_config['params']
+            )
+
+    if config['task']['mode'] == 'RESTORE':
+        backup_config = config['source']
+        for database in backup_config['database']:
+
+            try:
+                schema = (database['schema'])
+            except IndexError:
+                schema = None
+
+            dump_remote(
+                host=backup_config['host'],
+                port=backup_config['port'],
+                database=database['name'],
+                username=backup_config['credential']['login'],
+                password=backup_config['credential']['password'],
+                schema=schema,
+                path=os.path.join(root_path,database['file']),
+                checksum='verify_checksum' in backup_config['params']
             )
 
 
