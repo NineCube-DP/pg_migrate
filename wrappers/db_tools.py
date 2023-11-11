@@ -1,6 +1,11 @@
-import sys
 import csv
+import sys
+
 import psycopg2
+import psycopg2.errors
+import psycopg2.extras
+
+import pandas as pd
 
 
 class ExecutionQueryException(Exception):
@@ -60,7 +65,7 @@ def run_analyze_database(cursor, schema=None):
         $body$; ''')
 
 
-def gather_statistic(pg_connection, pg_cursor, schema):
+def gather_statistic(pg_connection, pg_cursor, schema=None):
     try:
         if schema:
             pg_cursor.execute(f"""
@@ -71,13 +76,13 @@ def gather_statistic(pg_connection, pg_cursor, schema):
                 n.nspname in ('{','.join(schema)}'); 
             """)
         else:
-            """
-                SELECT  n.nspname, c.relname table_name,  c.reltuples::bigint AS count_rows
+            pg_cursor.execute("""
+                SELECT  n.nspname schema, c.relname table_name,  c.reltuples::bigint AS count_rows
                 FROM   pg_class c
                 JOIN   pg_namespace n ON n.oid = c.relnamespace
                 WHERE
                 n.nspname not in ('pg_catalog', 'information_schema'); 
-            """
+            """)
         pg_connection.commit()
     except psycopg2.errors.SyntaxError as ex:
         print(ex)
@@ -111,15 +116,16 @@ def generate_checksum(host, port, database, username, password, path, schema=Non
     pass
 
 
-def verify_checksum(host, port, database, username, password, path, schema=None):
-    conn = connect_db(host, port, database, username, password)
+def verify_checksum(config, database, checksum_file, schema=None, ):
+    conn = connect_db(config["host"], config["port"], database, config["credential"]["login"],
+                      config["credential"]["password"])
     try:
         with conn.cursor() as cursor:
             run_analyze_database(cursor, schema)
             cursor.close()
             conn.commit()
 
-        with conn.cursor(name=f'pg_migrate_gather_information_cursor', withhold=True) as cursor:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
             data = gather_statistic(conn, cursor)
             cursor.close()
             conn.commit()
@@ -128,12 +134,17 @@ def verify_checksum(host, port, database, username, password, path, schema=None)
     except ExecutionQueryException as ex:
         pass
 
-    with open('employee_birthday.txt', mode='r') as csv_file:
-        csv_reader = csv.DictReader(csv_file,delimiter=",")
+    df = pd.DataFrame.from_records(data)
+
+    with open(checksum_file, mode='r') as csv_file:
+        csv_reader = csv.DictReader(csv_file, delimiter=",")
         # ['schema', 'table_name', 'table_rows']
         for row in csv_reader:
             schema = row['schema']
             table_name = row['table_name']
-            table_rows = row['table_rows']
+            table_rows = int(row['table_rows'])
 
-            data
+            row_count = int(df['count_rows'].loc[(df['schema'] == schema) & (df['table_name'] == table_name)].values[0])
+
+            if table_rows != row_count:
+                print(f'Table {table_name} row count mismatch, actual value is {table_rows}, should be {row_count}')

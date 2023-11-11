@@ -1,41 +1,71 @@
-import os
 import subprocess
 
 from wrappers.db_tools import verify_checksum
 
 
-def pg_restore_version():
-    cmd = ['bin/pg_restore', '-V']
-    result = subprocess.run(cmd, stdout=subprocess.PIPE)
-    return result.stdout.decode()
+class PgRestore:
 
+    def __init__(self):
+        cmd = ['command -v pg_restore']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
+        self.pg_restore_path = str(result.stdout.decode()).strip()
 
-def restore_remote(host, port, database, username, password, path, file, schema=None, checksum=False):
-    cmd = ['bin/pg_restore',
-           f'--clean',
-           f'--create',
-           f'--dbname={database}',
-           f'--username={username}',
-           f'--host={host}',
-           f'--port={str(port)}',
-           '--format=c',
-           '--encoding=UTF-8',
-           f'< {file}']
-    for s in schema:
-        cmd.append(f'--schema={s}')
+        cmd = ['command -v createdb']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
+        self.createdb_path = str(result.stdout.decode()).strip()
 
-    print(f'Restoring {database}')
-    p = subprocess.Popen(cmd, env=dict(PGPASSWORD=password), text=True, stdout=subprocess.PIPE)
-    out, err = p.communicate()
+    def version(self):
+        cmd = [self.pg_restore_path, '-V']
+        result = subprocess.run(cmd, stdout=subprocess.PIPE)
+        return result.stdout.decode()
 
-    if out:
-        print(f'pg_restore log: {out}')
-    if err:
-        print(f'pg_restore error: {err}')
+    def restore(self, database, backup_file, checksum_file, config):
 
-    print(f'{database} restored')
+        cmd = [self.createdb_path,
+               f'--host={config["host"]}',
+               f'--port={str(config["port"])}',
+               f'--username={database["owner"] if database["owner"] else config["credential"]["login"]}',
+               '--template=template0',
+               f'{database["name"]}']
+        print(cmd)
+        print(f'Creating database: {database["name"]}')
+        p = subprocess.Popen(cmd, env=dict(PGPASSWORD=config["credential"]["password"]), text=True,
+                             stdout=subprocess.PIPE)
+        out, err = p.communicate()
 
-    if checksum:
-        verify_checksum(host, port, database, username, password, path, schema)
+        if out:
+            print(f'createdb log: {out}')
+        if err:
+            print(f'createdb error: {err}')
 
-    pass
+        print(f'Database {database["name"]} created')
+
+        cmd = [self.pg_restore_path,
+               f'--dbname={database["name"]}',
+               f'--username={config["credential"]["login"]}',
+               f'--host={config["host"]}',
+               f'--port={str(config["port"])}',
+               f'--role={database["owner"] if database["owner"] else config["credential"]["login"]}',
+               '--format=c',
+               '--no-owner',
+               '--clean',
+               '--if-exists',
+               f'{backup_file}']
+
+        print(cmd)
+        print(f'Restoring {database["name"]}')
+        p = subprocess.Popen(cmd, env=dict(PGPASSWORD=config["credential"]["password"]), text=True,
+                             stdout=subprocess.PIPE)
+        out, err = p.communicate()
+
+        if out:
+            print(f'pg_restore log: {out}')
+        if err:
+            print(f'pg_restore error: {err}')
+
+        print(f'{database["name"]} restored')
+
+        if database['checksum']:
+            verify_checksum(config, database["name"], checksum_file)
+
+        pass
