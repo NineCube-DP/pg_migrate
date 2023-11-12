@@ -24,10 +24,11 @@ class PgRestore:
         cmd = [self.createdb_path,
                f'--host={config["host"]}',
                f'--port={str(config["port"])}',
-               f'--username={database["owner"] if database["owner"] else config["credential"]["login"]}',
+               f'--username={config["credential"]["login"]}',
+               f'--owner={database["owner"] if database["owner"] else config["credential"]["login"]}',
                '--template=template0',
                f'{database["name"]}']
-        print(cmd)
+        print(" ".join(cmd))
         print(f'Creating database: {database["name"]}')
         p = subprocess.Popen(cmd, env=dict(PGPASSWORD=config["credential"]["password"]), text=True,
                              stdout=subprocess.PIPE)
@@ -52,7 +53,7 @@ class PgRestore:
                '--if-exists',
                f'{backup_file}']
 
-        print(cmd)
+        print(" ".join(cmd))
         print(f'Restoring {database["name"]}')
         p = subprocess.Popen(cmd, env=dict(PGPASSWORD=config["credential"]["password"]), text=True,
                              stdout=subprocess.PIPE)
@@ -65,7 +66,7 @@ class PgRestore:
 
         print(f'{database["name"]} restored')
 
-        if database['checksum']:
+        if 'params' in config and 'verify_checksum' in config['params']:
             verify_checksum(config, database["name"], checksum_file)
 
         pass

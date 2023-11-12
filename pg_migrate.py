@@ -32,6 +32,14 @@ def make_path(path):
     return backup_dir
 
 
+def find_restore_database_conf(databases, name):
+    for database in databases:
+        if database['source'] == name:
+            return database
+
+    return None
+
+
 def initialize(args):
     if args.version:
         print_version()
@@ -45,22 +53,26 @@ def initialize(args):
             task['mode'] == 'MIGRATE'):
         backup_config = config['source']
 
-        for database in backup_config['database']:
+        for source_database in backup_config['database']:
             db_dir = make_path(task['path'])
 
             backup_file, checksum_file, report_file = pg_dump.dump(
                 task=task,
                 config=backup_config,
-                database=database,
+                database=source_database,
                 backup_path=db_dir
             )
 
             if task['mode'] == 'MIGRATE':
+                restore_config = config['destination']
+
+                restore_database = find_restore_database_conf(restore_config['database'], source_database['name'])
+
                 pg_restore.restore(
-                    database=database,
+                    database=restore_database,
                     backup_file=backup_file,
                     checksum_file=checksum_file,
-                    config=config['destination']
+                    config=restore_config
                 )
 
     if task['mode'] == 'RESTORE':

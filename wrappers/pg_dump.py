@@ -20,10 +20,9 @@ class PgDump:
 
         backup_file_path = os.path.join(backup_path, database["name"] + ".bak")
 
-        try:
-            schema = (database['schema'])
-        except IndexError:
-            schema = None
+        schema = None
+        if 'schema' in database:
+            schema = database['schema']
 
         checksum_file = None
 
@@ -44,6 +43,7 @@ class PgDump:
         for s in schema:
             cmd.append(f'--schema={s}')
 
+        print(" ".join(cmd))
         print(f'Dumping {database["name"]}')
         p = subprocess.Popen(cmd, env=dict(PGPASSWORD=credentials['password']), text=True,
                              stdout=subprocess.PIPE)
