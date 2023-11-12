@@ -25,12 +25,11 @@ def read_configuration(config_path):
             print(exc)
 
 
-def make_path(config, database_name):
-    root_dir = os.path.join(config['task']['path'])
-    backup_dir = os.path.join(root_dir, database_name + '_' + datetime.today().strftime('%Y-%m-%d_%H-%M-%S'))
+def make_path(path):
+    backup_dir = os.path.join(path, datetime.today().strftime('%Y-%m-%d_%H-%M-%S'))
     os.makedirs(backup_dir, exist_ok=True)
 
-    return root_dir, backup_dir
+    return backup_dir
 
 
 def initialize(args):
@@ -40,29 +39,31 @@ def initialize(args):
 
     config = read_configuration(args.config_location)
 
-    if config['task']['mode'] == 'BACKUP':
+    task = config['task']
+
+    if (task['mode'] == 'BACKUP' or
+            task['mode'] == 'MIGRATE'):
         backup_config = config['source']
+
         for database in backup_config['database']:
+            db_dir = make_path(task['path'])
 
-            try:
-                schema = (database['schema'])
-            except IndexError:
-                schema = None
-
-            root_path, db_dir = make_path(config, backup_config['params']['backup_path'])
-
-            pg_dump.dump(
-                host=backup_config['host'],
-                port=backup_config['port'],
-                database=database['name'],
-                username=backup_config['credential']['login'],
-                password=backup_config['credential']['password'],
-                schema=schema,
-                backup_path=db_dir,
-                checksum='generate_checksum' in backup_config['params']
+            backup_file, checksum_file, report_file = pg_dump.dump(
+                task=task,
+                config=backup_config,
+                database=database,
+                backup_path=db_dir
             )
 
-    if config['task']['mode'] == 'RESTORE':
+            if task['mode'] == 'MIGRATE':
+                pg_restore.restore(
+                    database=database,
+                    backup_file=backup_file,
+                    checksum_file=checksum_file,
+                    config=config['destination']
+                )
+
+    if task['mode'] == 'RESTORE':
         restore_config = config['destination']
         for database in restore_config['database']:
             pg_restore.restore(

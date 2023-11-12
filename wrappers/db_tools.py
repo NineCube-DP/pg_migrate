@@ -90,7 +90,7 @@ def gather_statistic(pg_connection, pg_cursor, schema=None):
     return pg_cursor.fetchall()
 
 
-def generate_checksum(host, port, database, username, password, path, schema=None):
+def generate_checksum(host, port, database, username, password, checksum_file, schema=None):
     conn = connect_db(host, port, database, username, password)
     try:
         with conn.cursor() as cursor:
@@ -100,20 +100,20 @@ def generate_checksum(host, port, database, username, password, path, schema=Non
 
         with conn.cursor(name=f'pg_migrate_gather_information_cursor', withhold=True) as cursor:
             data = gather_statistic(conn, cursor, schema)
-            with open(f'{path}/{database}.csv', 'w') as out:
+            with open(checksum_file, 'w') as out:
                 csv_out = csv.writer(out)
                 csv_out.writerow(['schema', 'table_name', 'table_rows'])
                 for row in data:
                     csv_out.writerow(row)
-                print(f'Checksum for {database} generated : {path}/{database}.csv')
+                print(f'Checksum for {database} generated : {checksum_file}')
 
             cursor.close()
             conn.commit()
 
             conn.close()
+            return checksum_file
     except ExecutionQueryException as ex:
         pass
-    pass
 
 
 def verify_checksum(config, database, checksum_file, schema=None, ):
