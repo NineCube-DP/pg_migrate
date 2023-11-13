@@ -1,6 +1,7 @@
-
-mode: # all available modes MIGRATE | BACKUP | RESTORE
-path: # path to save all output files - default path
+task:
+  id: # identification of this task
+  mode: # all available modes MIGRATE | BACKUP | RESTORE
+  path: # path to save all output files - default path
 
 source:
   remote: # True if connection to database is through IP connection or False if else
@@ -10,7 +11,9 @@ source:
     login: # username of admin account of remote database
     password: # password of admin account of remote database
   database: # list of database to use - default pg_migrate copy all schemas of the database. If you want to specify use
-   # - db_name@schema,schema2,...
+    - name: # database name
+      schema: # list of schema to dump
+        - # ie. public
   params: # list of optional params
    # - generate_checksum - generate file with information about source database structure and data
 
@@ -22,6 +25,9 @@ destination:
     login: # username of admin account of remote database
     password: # password of admin account of remote database
   database: # list of database to use - default pg_migrate copy all schemas of the database. If you want to specify use
-   # - db_name@schema,schema2,...
+    - name: # name of new database
+      source: # name of database from source
+      create: # create new database on restore
+      owner: # owner of new database
   params: # list of optional params
    # - verify_checksum - verify restored database with information about source database structure and data from checksum file
