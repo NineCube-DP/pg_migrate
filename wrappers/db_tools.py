@@ -68,12 +68,13 @@ def run_analyze_database(cursor, schema=None):
 def gather_statistic(pg_connection, pg_cursor, schema=None):
     try:
         if schema:
+            schemas = "','".join(schema)
             pg_cursor.execute(f"""
                 SELECT  n.nspname, c.relname table_name,  c.reltuples::bigint AS count_rows
                 FROM   pg_class c
                 JOIN   pg_namespace n ON n.oid = c.relnamespace
                 WHERE
-                n.nspname in ('{','.join(schema)}'); 
+                n.nspname in ('{schemas}'); 
             """)
         else:
             pg_cursor.execute("""
