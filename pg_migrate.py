@@ -25,8 +25,8 @@ def read_configuration(config_path):
             print(exc)
 
 
-def make_path(path):
-    backup_dir = os.path.join(path, datetime.today().strftime('%Y-%m-%d_%H-%M-%S'))
+def make_path(task, database):
+    backup_dir = os.path.join(task['path'], task['id'], database, datetime.today().strftime('%Y-%m-%d_%H-%M-%S'))
     os.makedirs(backup_dir, exist_ok=True)
 
     return backup_dir
@@ -54,7 +54,9 @@ def initialize(args):
         backup_config = config['source']
 
         for source_database in backup_config['database']:
-            db_dir = make_path(task['path'])
+
+            db_dir = make_path(task, source_database['name'])
+            print(f'Using path: {db_dir}')
 
             backup_file, checksum_file, report_file = pg_dump.dump(
                 task=task,

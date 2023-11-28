@@ -16,11 +16,22 @@ class PgDump:
         return result.stdout.decode()
 
     def dump(self, task, config, database, backup_path):
+        # /usr/bin/pg_dump
+        # --verbose
+        # --host=10.2.11.43
+        # --port=5444
+        # --username=dpustula
+        # --format=c
+        # --encoding=UTF-8
+        # --no-owner
+        # --file /home/dpustula/Vaults/Cez/DevOps/db-backup/go-20.11.2023/dump-_dictionaries_dev_go-202311201944.backup
+        # -n public _dictionaries_dev_go
+
         credentials = config['credential']
 
         backup_file_path = os.path.join(backup_path, database["name"] + ".bak")
 
-        schema = None
+        schema = []
         if 'schema' in database:
             schema = database['schema']
 
@@ -38,6 +49,8 @@ class PgDump:
                f'--port={str(config["port"])}',
                f'--file={backup_file_path}',
                '--format=c',
+               '--verbose',
+               '--no-owner',
                '--encoding=UTF-8']
 
         for s in schema:
@@ -46,27 +59,22 @@ class PgDump:
         print(" ".join(cmd))
         print(f'Dumping {database["name"]}')
         p = subprocess.Popen(cmd, env=dict(PGPASSWORD=credentials['password']), text=True,
-                             stdout=subprocess.PIPE)
-        out, err = p.communicate()
+                             stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        ignore, out = p.communicate()
 
         print(f'Return code: {p.returncode}')
 
         if out:
-            print(f'pg_dump log: {out}')
-        if err:
-            print(f'pg_dump error: {err}')
+            print(out)
 
         print(f'{database["name"]} dumped')
 
-        report_path = os.path.join(backup_path, database["name"] + ".rep")
+        report_path = os.path.join(backup_path, database["name"] + "-dump.report")
         with open(report_path, 'w') as report:
             report.write(f'Report for dumping {database["name"]} from task id {task["id"]}\n')
             report.write(f'Executed command: {" ".join(cmd)}\n')
             report.write(f'Exit code: {p.returncode}\n')
-            report.write(f'Info: {out}\n')
-
-            if err:
-                report.write(f'Error: {err}\n')
+            report.write(f'Logs: {out}\n')
 
             report.write(f'Generated backup: {backup_file_path}\n')
             report.write(f'Generated checksum: {checksum_file}\n')
